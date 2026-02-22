@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Learning Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+:root {
+  /* ── Dark mode (default) ── */
+  --bg: #06080f;
+  --surface: #0b1120;
+  --card: #0f1929;
+  --card-hover: #162038;
+  --border: rgba(140,190,255,0.09);
+  --border-bright: rgba(140,190,255,0.22);
+  --header-bg: rgba(6,8,15,0.92);
+
+  /* Accent palette – vivid */
+  --teal: #00e5b8;
+  --teal-dim: rgba(0,229,184,0.12);
+  --teal-glow: rgba(0,229,184,0.30);
+  --amber: #ffb020;
+  --amber-dim: rgba(255,176,32,0.12);
+  --blue: #4f9eff;
+  --blue-dim: rgba(79,158,255,0.12);
+  --violet: #b97fff;
+  --violet-dim: rgba(185,127,255,0.12);
+  --pink: #ff6eb4;
+  --pink-dim: rgba(255,110,180,0.12);
+  --red: #ff6b6b;
+  --red-dim: rgba(255,107,107,0.12);
+  --lime: #a3e635;
+  --lime-dim: rgba(163,230,53,0.12);
+
+  /* Phase accent colours */
+  --phase1: #4f9eff;
+  --phase2: #b97fff;
+  --phase3: #ff6eb4;
+  --phase4: #00e5b8;
+
+  /* Text */
+  --text: #cce0f5;
+  --text-muted: #4e6a8a;
+  --text-dim: #7a9dbc;
+  --text-heading: #ffffff;
+
+  --font-d: 'Syne', sans-serif;
+  --font-m: 'DM Mono', monospace;
+  --radius: 10px;
+  --tab-h: 48px;
+  --theme-transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* ── Light mode ── */
+body.light {
+  --bg: #f0f4ff;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card-hover: #f5f8ff;
+  --border: rgba(60,100,180,0.10);
+  --border-bright: rgba(60,100,180,0.22);
+  --header-bg: rgba(240,244,255,0.95);
+
+  --teal: #00a884;
+  --teal-dim: rgba(0,168,132,0.10);
+  --teal-glow: rgba(0,168,132,0.22);
+  --amber: #d97706;
+  --amber-dim: rgba(217,119,6,0.10);
+  --blue: #2563eb;
+  --blue-dim: rgba(37,99,235,0.10);
+  --violet: #7c3aed;
+  --violet-dim: rgba(124,58,237,0.10);
+  --pink: #db2777;
+  --pink-dim: rgba(219,39,119,0.10);
+  --red: #dc2626;
+  --red-dim: rgba(220,38,38,0.10);
+  --lime: #65a30d;
+  --lime-dim: rgba(101,163,13,0.10);
+
+  --phase1: #2563eb;
+  --phase2: #7c3aed;
+  --phase3: #db2777;
+  --phase4: #00a884;
+
+  --text: #1e3a5f;
+  --text-muted: #6b8aaa;
+  --text-dim: #4a6a8a;
+  --text-heading: #0f1e33;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-m);
+  font-size: 13px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: var(--theme-transition);
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.25s;
+}
+body.light::before { opacity: 0.4; }
+
+/* ─── HEADER ─── */
+#header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--header-bg);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex; align-items: center; gap: 20px;
+  height: 60px;
+  transition: var(--theme-transition);
+}
+.logo {
+  font-family: var(--font-d);
+  font-size: 15px; font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--text-heading);
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
+}
+.logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 8px var(--teal-glow);
+  animation: pulse 2.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:0.6; transform:scale(1.3); }
+}
+
+/* Theme toggle */
+.theme-toggle {
+  width: 38px; height: 38px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--border);
+  cursor: pointer; font-size: 17px; line-height: 1;
+  transition: all 0.2s; flex-shrink: 0;
+  color: var(--text-muted);
+}
+.theme-toggle:hover { border-color: var(--border-bright); color: var(--text); background: var(--card-hover); }
+
+/* Stats bar */
+.stats-bar {
+  display: flex; gap: 6px; align-items: center;
+  flex: 1; justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.stat-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 11px; font-family: var(--font-m);
+  white-space: nowrap;
+  transition: var(--theme-transition);
+}
+.stat-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
+.stat-pill .val { font-weight: 500; color: var(--text-heading); }
+
+.overall-pill {
+  background: var(--teal-dim);
+  border-color: rgba(0,229,184,0.30);
+  color: var(--teal);
+  font-weight: 600;
+  padding: 5px 14px;
+}
+
+/* ─── TABS ─── */
+#tabs {
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 28px;
+  height: var(--tab-h);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transition: var(--theme-transition);
+}
+.tab-btn {
+  padding: 0 18px;
+  height: var(--tab-h);
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-d);
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex; align-items: center; gap: 8px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+.tab-count {
+  font-size: 10px; padding: 1px 6px; border-radius: 8px;
+  background: var(--card); color: var(--text-dim);
+  transition: var(--theme-transition);
+}
+
+.add-btn {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 16px;
+  background: var(--teal-dim);
+  border: 1px solid rgba(0,212,170,0.3);
+  border-radius: 7px; cursor: pointer;
+  font-family: var(--font-d); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.04em; color: var(--teal);
+  transition: all 0.2s;
+}
+.add-btn:hover { background: var(--teal); color: #fff; border-color: var(--teal); }
+.add-btn svg { width: 14px; height: 14px; }
+
+/* ─── MAIN ─── */
+#main { padding: 28px; max-width: 1300px; margin: 0 auto; position: relative; z-index: 1; }
+
+.view { display: none; }
+.view.active { display: block; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+/* ─── DASHBOARD VIEW ─── */
+.phase-section { margin-bottom: 40px; }
+.phase-header {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 16px;
+}
+.phase-num {
+  font-family: var(--font-d); font-size: 10px; font-weight: 800;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 20px;
+  border: none;
+}
+.phase-num-1 { background: rgba(79,158,255,0.18); color: var(--phase1); box-shadow: 0 0 12px rgba(79,158,255,0.15); }
+.phase-num-2 { background: rgba(185,127,255,0.18); color: var(--phase2); box-shadow: 0 0 12px rgba(185,127,255,0.15); }
+.phase-num-3 { background: rgba(255,110,180,0.18); color: var(--phase3); box-shadow: 0 0 12px rgba(255,110,180,0.15); }
+.phase-num-4 { background: rgba(0,229,184,0.18); color: var(--phase4); box-shadow: 0 0 12px rgba(0,229,184,0.15); }
+.phase-name {
+  font-family: var(--font-d); font-size: 15px; font-weight: 700;
+  color: var(--text-heading);
+}
+.phase-rule { flex: 1; height: 1px; background: var(--border); }
+.phase-prog {
+  font-size: 11px; color: var(--text-muted); font-family: var(--font-m);
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+/* ─── COURSE CARD ─── */
+.course-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s, background 0.25s;
+  cursor: pointer;
+  position: relative;
+}
+/* Thick coloured top bar */
+.course-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+}
+.course-card.status-completed { border-color: rgba(0,229,184,0.20); }
+.course-card.status-completed::before { background: linear-gradient(90deg, var(--teal), #00b8ff); }
+
+.course-card.status-in-progress { border-color: rgba(255,176,32,0.20); }
+.course-card.status-in-progress::before { background: linear-gradient(90deg, var(--amber), #ff8c42); }
+
+.course-card.status-not-started { border-color: rgba(79,158,255,0.15); }
+.course-card.status-not-started::before { background: linear-gradient(90deg, var(--blue), var(--violet)); }
+
+.course-card.status-recommended { border-color: rgba(185,127,255,0.20); border-style: solid; }
+.course-card.status-recommended::before { background: linear-gradient(90deg, var(--violet), var(--pink)); }
+
+/* Subtle tinted glow behind each card */
+.course-card.status-completed { box-shadow: 0 2px 12px rgba(0,229,184,0.06); }
+.course-card.status-in-progress { box-shadow: 0 2px 12px rgba(255,176,32,0.06); }
+.course-card.status-not-started { box-shadow: 0 2px 12px rgba(79,158,255,0.04); }
+.course-card.status-recommended { box-shadow: 0 2px 12px rgba(185,127,255,0.06); }
+
+.course-card:hover { transform: translateY(-2px); border-color: var(--border-bright); }
+.course-card.status-completed:hover { box-shadow: 0 8px 28px rgba(0,229,184,0.14); }
+.course-card.status-in-progress:hover { box-shadow: 0 8px 28px rgba(255,176,32,0.14); }
+.course-card.status-not-started:hover { box-shadow: 0 8px 28px rgba(79,158,255,0.12); }
+.course-card.status-recommended:hover { box-shadow: 0 8px 28px rgba(185,127,255,0.14); }
+
+.card-top {
+  padding: 16px;
+  display: flex; gap: 14px; align-items: flex-start;
+}
+
+/* Progress ring */
+.ring-wrap { flex-shrink: 0; position: relative; width: 52px; height: 52px; cursor: pointer; }
+.ring-wrap svg { transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--border); }
+.ring-fill { fill: none; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease, stroke 0.3s; }
+.ring-label {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; font-family: var(--font-d);
+  color: var(--text-heading);
+}
+
+.card-info { flex: 1; min-width: 0; }
+.card-name {
+  font-family: var(--font-d); font-size: 14px; font-weight: 700;
+  color: var(--text-heading); line-height: 1.3; margin-bottom: 3px;
+  display: flex; align-items: flex-start; gap: 6px;
+}
+.card-name-text { flex: 1; }
+.card-name-link {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 5px; margin-top: 0px;
+  background: var(--blue-dim);
+  border: 1px solid rgba(79,158,255,0.3);
+  color: var(--blue); font-size: 11px; text-decoration: none;
+  transition: all 0.15s; line-height: 1;
+}
+.card-name-link:hover {
+  background: var(--blue); color: #fff; border-color: var(--blue);
+  box-shadow: 0 0 10px rgba(79,158,255,0.35);
+}
+.card-provider { font-size: 11px; color: var(--text-muted); font-style: italic; margin-bottom: 6px; }
+
+.card-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.badge {
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 3px; font-weight: 600;
+}
+.badge-status { cursor: pointer; user-select: none; transition: opacity 0.15s; }
+.badge-status:hover { opacity: 0.7; }
+.badge-completed { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(0,229,184,0.30); }
+.badge-in-progress { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,176,32,0.30); }
+.badge-not-started { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(79,158,255,0.28); }
+.badge-recommended { background: var(--violet-dim); color: var(--violet); border: 1px dashed rgba(185,127,255,0.35); }
+.badge-tag { background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid var(--border); }
+body.light .badge-tag { background: rgba(0,0,60,0.06); }
+.badge-cost { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border); }
+body.light .badge-cost { background: rgba(0,0,60,0.04); }
+
+/* Expanded card content */
+.card-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+.card-body.open { max-height: 800px; overflow-y: auto; }
+.card-body-inner {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px; padding-top: 14px;
+}
+
+.card-desc { color: var(--text-dim); font-size: 12px; line-height: 1.6; margin-bottom: 12px; }
+
+.progress-control { margin-bottom: 12px; }
+.prog-label {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px; font-size: 11px; color: var(--text-muted);
+}
+.prog-val { color: var(--text); font-weight: 500; }
+input[type="range"] {
+  width: 100%; height: 4px; border-radius: 4px; cursor: pointer;
+  background: var(--border);
+  -webkit-appearance: none; outline: none;
+}
+body.light input[type="range"] { background: rgba(60,100,180,0.15); }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--teal); cursor: pointer;
+  box-shadow: 0 0 6px var(--teal-glow);
+  transition: transform 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+.card-meta {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  margin-bottom: 12px;
+}
+.meta-item { font-size: 11px; }
+.meta-key { color: var(--text-muted); margin-bottom: 2px; }
+.meta-val { color: var(--text); font-weight: 500; }
+
+.card-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--teal); font-size: 11px; text-decoration: none;
+  transition: opacity 0.15s; margin-bottom: 10px;
+}
+.card-link:hover { opacity: 0.7; text-decoration: underline; }
+
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  padding: 7px 14px; border-radius: 6px; border: 1px solid;
+  font-family: var(--font-m); font-size: 11px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em;
+}
+.btn-complete { background: var(--teal-dim); border-color: rgba(0,229,184,0.35); color: var(--teal); }
+.btn-complete:hover { background: var(--teal); color: #001a14; border-color: var(--teal); }
+.btn-edit { background: var(--blue-dim); border-color: rgba(79,158,255,0.35); color: var(--blue); }
+.btn-edit:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-delete { background: var(--red-dim); border-color: rgba(255,107,107,0.35); color: var(--red); margin-left: auto; }
+.btn-delete:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ─── TIMELINE VIEW ─── */
+#view-timeline { padding-bottom: 20px; }
+.timeline-wrap { overflow-x: auto; }
+.tl-header-row {
+  display: flex; align-items: center;
+  margin-bottom: 8px; gap: 0;
+}
+.tl-label-col { width: 260px; flex-shrink: 0; font-size: 10px; color: var(--text-muted); padding: 0 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+.tl-months { display: flex; flex: 1; }
+.tl-month {
+  flex: 1; min-width: 80px; text-align: center;
+  font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 4px 0;
+  border-left: 1px solid var(--border);
+}
+.tl-month.current { color: var(--teal); }
+
+.tl-row {
+  display: flex; align-items: center;
+  min-height: 44px; border-radius: 6px;
+  margin-bottom: 6px;
+  transition: background 0.15s;
+}
+.tl-row:hover { background: rgba(255,255,255,0.03); }
+
+.tl-name-col {
+  width: 260px; flex-shrink: 0;
+  padding: 8px 12px; font-size: 12px; line-height: 1.3;
+}
+.tl-course-name { font-family: var(--font-d); font-weight: 600; color: var(--text); }
+.tl-course-phase { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+.tl-bars { position: relative; flex: 1; height: 44px; }
+.tl-grid-line {
+  position: absolute; top: 0; bottom: 0;
+  width: 1px; background: var(--border);
+}
+.tl-today-line {
+  position: absolute; top: -4px; bottom: -4px;
+  width: 1px; background: var(--amber);
+  z-index: 2;
+}
+.tl-today-line::after {
+  content: 'TODAY';
+  position: absolute; top: 2px; left: 4px;
+  font-size: 8px; color: var(--amber); letter-spacing: 0.1em; font-family: var(--font-m);
+}
+.tl-bar {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  height: 22px; border-radius: 4px;
+  display: flex; align-items: center; overflow: hidden;
+  min-width: 4px;
+}
+.tl-bar-fill {
+  height: 100%; border-radius: 4px 0 0 4px;
+  transition: width 0.5s ease;
+}
+.tl-bar-label {
+  position: absolute; left: 8px; right: 4px;
+  font-size: 9px; font-weight: 600; font-family: var(--font-d);
+  letter-spacing: 0.04em; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; pointer-events: none;
+}
+
+/* Status colors for timeline */
+.tl-bar.status-completed { background: rgba(0,212,170,0.15); }
+.tl-bar.status-completed .tl-bar-fill { background: rgba(0,212,170,0.5); }
+.tl-bar.status-completed .tl-bar-label { color: var(--teal); }
+
+.tl-bar.status-in-progress { background: rgba(245,158,11,0.15); }
+.tl-bar.status-in-progress .tl-bar-fill { background: rgba(245,158,11,0.5); }
+.tl-bar.status-in-progress .tl-bar-label { color: var(--amber); }
+
+.tl-bar.status-not-started { background: rgba(91,156,246,0.10); }
+.tl-bar.status-not-started .tl-bar-fill { background: rgba(91,156,246,0.4); }
+.tl-bar.status-not-started .tl-bar-label { color: var(--blue); }
+
+.tl-bar.status-recommended { background: rgba(167,139,250,0.10); border: 1px dashed rgba(167,139,250,0.3); }
+.tl-bar.status-recommended .tl-bar-fill { background: rgba(167,139,250,0.3); }
+.tl-bar.status-recommended .tl-bar-label { color: var(--violet); }
+
+/* ─── CALENDAR VIEW ─── */
+.cal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+@media (max-width: 900px) { .cal-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .cal-grid { grid-template-columns: 1fr; } }
+
+.cal-month { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.cal-month-head {
+  padding: 12px 16px;
+  background: rgba(0,0,0,0.2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-d); font-size: 13px; font-weight: 700;
+  color: #fff;
+}
+.cal-month-head span { color: var(--text-muted); font-weight: 400; font-size: 11px; margin-left: 6px; }
+.cal-days-head {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 8px 8px 4px;
+}
+.cal-day-name { text-align: center; font-size: 9px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.cal-days {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 0 8px 10px;
+  gap: 2px;
+}
+.cal-day {
+  aspect-ratio: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  border-radius: 5px; font-size: 11px; color: var(--text-dim);
+  position: relative; padding: 2px; cursor: default;
+}
+.cal-day.empty { opacity: 0; }
+.cal-day.today { background: rgba(0,212,170,0.12); color: var(--teal); font-weight: 700; }
+.cal-day.has-event { cursor: pointer; }
+.cal-day.has-event:hover { background: rgba(255,255,255,0.06); }
+.cal-dot { width: 4px; height: 4px; border-radius: 50%; margin-top: 1px; }
+
+.cal-events-legend { margin-top: 20px; }
+.cal-legend-title {
+  font-family: var(--font-d); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 10px;
+}
+.cal-event-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.cal-event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cal-event-name { color: var(--text); font-family: var(--font-d); font-weight: 600; }
+.cal-event-date { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 999;
+  background: rgba(4,9,18,0.85); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 14px;
+  width: 100%; max-width: 560px;
+  max-height: 92vh; overflow-y: auto;
+  padding: 28px;
+  animation: modalIn 0.25s ease;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  position: relative;
+}
+@keyframes modalIn {
+  from { opacity:0; transform: scale(0.95) translateY(12px); }
+  to { opacity:1; transform: none; }
+}
+.modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 22px;
+}
+.modal-title { font-family: var(--font-d); font-size: 18px; font-weight: 800; color: #fff; }
+.modal-close {
+  width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--card); cursor: pointer; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; transition: all 0.15s;
+}
+.modal-close:hover { background: var(--red-dim); color: var(--red); border-color: rgba(248,113,113,0.3); }
+
+.form-row { margin-bottom: 16px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+label {
+  display: block; font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 6px;
+}
+input[type="text"], input[type="url"], input[type="number"], input[type="date"], select, textarea {
+  width: 100%; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--text); font-family: var(--font-m);
+  font-size: 12px; outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus,
+input[type="date"]:focus, select:focus, textarea:focus {
+  border-color: rgba(0,212,170,0.4);
+  box-shadow: 0 0 0 3px rgba(0,212,170,0.08);
+}
+input[type="date"] { color-scheme: dark; }
+select option { background: var(--card); }
+textarea { resize: vertical; min-height: 70px; }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.btn-primary {
+  flex: 1; padding: 10px; border-radius: 8px;
+  background: var(--teal); border: none; color: #00100d;
+  font-family: var(--font-d); font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-cancel {
+  padding: 10px 20px; border-radius: 8px;
+  background: var(--card); border: 1px solid var(--border); color: var(--text-muted);
+  font-family: var(--font-m); font-size: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-cancel:hover { color: var(--text); border-color: var(--border-bright); }
+
+/* ─── EMPTY STATE ─── */
+.empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+.empty p { font-size: 13px; line-height: 1.7; }
+
+/* ─── SYNC STATUS ─── */
+.sync-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px; font-size: 11px;
+  font-family: var(--font-m); white-space: nowrap;
+  transition: all 0.3s;
+}
+.sync-pill.synced { background: var(--teal-dim); border: 1px solid rgba(0,212,170,0.25); color: var(--teal); }
+.sync-pill.syncing { background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.25); color: var(--amber); }
+.sync-pill.offline { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.sync-dot.pulse { animation: pulse 1.2s ease-in-out infinite; }
+
+/* ─── SETUP OVERLAY ─── */
+#setup-overlay {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(4,9,18,0.97); backdrop-filter: blur(12px);
+  align-items: center; justify-content: center; padding: 24px;
+}
+#setup-overlay.open { display: flex; }
+.setup-box {
+  background: var(--surface); border: 1px solid var(--border-bright);
+  border-radius: 16px; max-width: 580px; width: 100%; padding: 36px;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.7);
+}
+.setup-icon { font-size: 36px; margin-bottom: 16px; }
+.setup-title { font-family: var(--font-d); font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+.setup-subtitle { color: var(--text-muted); font-size: 13px; line-height: 1.7; margin-bottom: 28px; }
+.setup-step {
+  display: flex; gap: 14px; margin-bottom: 18px; align-items: flex-start;
+}
+.setup-num {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  background: var(--teal-dim); border: 1px solid rgba(0,212,170,0.3);
+  color: var(--teal); font-family: var(--font-d); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.setup-step-text { font-size: 12px; color: var(--text-dim); line-height: 1.6; padding-top: 3px; }
+.setup-step-text strong { color: var(--text); }
+.setup-fields { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.setup-fields label { color: var(--text-muted); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+.setup-paste-area {
+  width: 100%; margin-top: 8px; min-height: 120px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--font-m);
+  font-size: 11px; padding: 12px; resize: vertical; outline: none;
+  transition: border-color 0.15s;
+}
+.setup-paste-area:focus { border-color: rgba(0,212,170,0.4); }
+.setup-err { color: var(--red); font-size: 11px; margin-top: 6px; min-height: 16px; }
+.setup-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+/* ─── LOADING SCREEN ─── */
+#loading-screen {
+  display: none; position: fixed; inset: 0; z-index: 1500;
+  background: var(--bg); align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+}
+#loading-screen.open { display: flex; }
+.loading-spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid rgba(0,212,170,0.15);
+  border-top-color: var(--teal);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: var(--text-muted); font-size: 12px; letter-spacing: 0.08em; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── TOOLTIP ─── */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border-bright);
+  padding: 5px 10px; border-radius: 5px;
+  font-size: 10px; color: var(--text); white-space: nowrap;
+  pointer-events: none; z-index: 999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ─── SECTION INTRO ─── */
+.section-note {
+  font-size: 11px; color: var(--text-muted); margin-bottom: 20px;
+  padding: 10px 14px; background: var(--card); border-left: 3px solid var(--amber);
+  border-radius: 0 6px 6px 0;
+  transition: var(--theme-transition);
+}
+
+/* Light mode input date fix */
+body.light input[type="date"] { color-scheme: light; }
+body.light .modal-overlay { background: rgba(200,215,240,0.7); }
+body.light .modal { box-shadow: 0 32px 80px rgba(0,50,150,0.12); }
+body.light select option { background: #ffffff; color: #1e3a5f; }
+body.light .setup-overlay { background: rgba(220,230,250,0.97); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    AI Learning Dashboard
+  </div>
+  <div class="stats-bar" id="stats-bar"></div>
+  <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
+  <div class="sync-pill syncing" id="sync-pill">
+    <div class="sync-dot pulse"></div>
+    <span id="sync-label">Connecting…</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div id="tabs">
+  <button class="tab-btn active" onclick="switchTab('dashboard')">
+    Dashboard <span class="tab-count" id="tc-dashboard">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('timeline')">
+    Timeline
+  </button>
+  <button class="tab-btn" onclick="switchTab('calendar')">
+    Calendar
+  </button>
+  <button class="add-btn" onclick="openModal()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add Course
+  </button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div id="view-dashboard" class="view active">
+    <div id="dashboard-content"></div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div id="view-timeline" class="view">
+    <div class="section-note">Each bar represents a course from start → target date. The amber line marks today. Click any course name to jump to its card.</div>
+    <div class="timeline-wrap">
+      <div id="timeline-content"></div>
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="view-calendar" class="view">
+    <div class="section-note">Target completion dates shown below. Click a date to see which courses are due.</div>
+    <div class="cal-grid" id="calendar-content"></div>
+    <div class="cal-events-legend" id="cal-events-list"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Add Course</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <form id="course-form" onsubmit="handleFormSubmit(event)">
+      <input type="hidden" id="f-id">
+      <div class="form-row">
+        <label>Course / Resource Name *</label>
+        <input type="text" id="f-name" required placeholder="e.g. Python for Everybody">
+      </div>
+      <div class="form-row">
+        <label>Provider / Author</label>
+        <input type="text" id="f-provider" placeholder="e.g. Andrew Ng · DeepLearning.AI">
+      </div>
+      <div class="form-row">
+        <label>URL</label>
+        <input type="url" id="f-url" placeholder="https://...">
+      </div>
+      <div class="form-row">
+        <label>Description</label>
+        <textarea id="f-description" placeholder="What will you learn?"></textarea>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Phase</label>
+          <select id="f-phase">
+            <option value="1">Phase 1 — Foundations</option>
+            <option value="2">Phase 2 — Bridge</option>
+            <option value="3">Phase 3 — Branching</option>
+            <option value="4">Phase 4 — Advanced</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="not-started">Not Started</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="recommended">Suggested</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Progress %</label>
+          <input type="number" id="f-progress" min="0" max="100" value="0">
+        </div>
+        <div class="form-row">
+          <label>Est. Hours</label>
+          <input type="number" id="f-hours" min="0" step="0.5" placeholder="e.g. 10">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Start Date</label>
+          <input type="date" id="f-start">
+        </div>
+        <div class="form-row">
+          <label>Target Complete</label>
+          <input type="date" id="f-target">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Cost</label>
+          <input type="text" id="f-cost" placeholder="e.g. Free / £49/mo">
+        </div>
+        <div class="form-row">
+          <label>Format</label>
+          <input type="text" id="f-format" placeholder="e.g. Online Course">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Tags (comma separated)</label>
+        <input type="text" id="f-tags" placeholder="e.g. GenAI, Strategy, No-code">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-primary" id="form-submit-btn">Save Course</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ─── FIREBASE CONFIG ──────────────────────────────────────────────────────
+// This gets filled in either from localStorage (after first setup) or by the user pasting their config.
+const CONFIG_KEY = 'ai_firebase_config';
+
+let db = null;
+let dbRef = null;
+let firebaseReady = false;
+
+function getSavedConfig() {
+  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch(e) { return null; }
+}
+
+function saveConfig(cfg) {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
+
+function parseConfigPaste(raw) {
+  // Accept either a full firebaseConfig object or just the contents
+  let cleaned = raw.trim();
+  // Wrap in braces if not already
+  if (!cleaned.startsWith('{')) cleaned = '{' + cleaned + '}';
+  // Convert JS object (unquoted keys) to JSON
+  cleaned = cleaned
+    .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')  // quote keys
+    .replace(/:\s*"([^"]*)"/g, (_, v) => ': "' + v + '"')
+    .replace(/,\s*}/g, '}'); // trailing commas
+  try {
+    const cfg = JSON.parse(cleaned);
+    if (!cfg.apiKey || !cfg.databaseURL) throw new Error('Missing required fields');
+    return cfg;
+  } catch(e) {
+    // Try eval as a fallback for trickier pastes
+    try {
+      const obj = Function('"use strict"; return (' + raw + ')')();
+      if (!obj.apiKey || !obj.databaseURL) throw new Error('Missing required fields');
+      return obj;
+    } catch(e2) {
+      return null;
+    }
+  }
+}
+
+function connectFirebase(cfg) {
+  try {
+    if (firebase.apps.length) firebase.app().delete();
+    firebase.initializeApp(cfg);
+    db = firebase.database();
+    dbRef = db.ref('ai_learning/courses');
+    listenForChanges();
+    saveConfig(cfg);
+    document.getElementById('setup-overlay').classList.remove('open');
+    setSyncStatus('syncing', 'Syncing…');
+  } catch(e) {
+    console.error(e);
+    setSyncStatus('offline', 'Error');
+  }
+}
+
+function connectFirebaseFromPaste() {
+  const raw = document.getElementById('setup-paste').value;
+  const cfg = parseConfigPaste(raw);
+  document.getElementById('setup-err').textContent = '';
+  if (!cfg) {
+    document.getElementById('setup-err').textContent = '⚠ Could not parse config — make sure you pasted the full firebaseConfig object contents.';
+    return;
+  }
+  connectFirebase(cfg);
+}
+
+// Expose to onclick in HTML
+window.connectFirebase = connectFirebaseFromPaste;
+
+// ─── SYNC STATUS ─────────────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  const pill = document.getElementById('sync-pill');
+  const lbl = document.getElementById('sync-label');
+  const dot = pill.querySelector('.sync-dot');
+  pill.className = 'sync-pill ' + state;
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' pulse' : '');
+  lbl.textContent = label;
+}
+
+// ─── DATA ──────────────────────────────────────────────────────────────────
+const DEFAULT_COURSES = [
+  { id:1, name:"Various AI Introductions", provider:"Multiple platforms", url:"", phase:1, status:"completed", progress:100, hours:10, start:"2026-01-01", target:"2026-02-10", cost:"Free", format:"Mixed", description:"General orientation — what AI is, key terms, and basic concepts. Completed various bite-sized introductory content.", tags:["Introductory"] },
+  { id:2, name:"AI for Everyone", provider:"Andrew Ng · DeepLearning.AI", url:"https://www.coursera.org/learn/ai-for-everyone", phase:1, status:"in-progress", progress:50, hours:7, start:"2026-02-01", target:"2026-03-10", cost:"Free to audit", format:"Online Course", description:"Non-technical overview of AI strategy, capabilities, and limitations. The best single course for understanding AI without coding.", tags:["Strategy","No-code"] },
+  { id:3, name:"Generative AI for Everyone", provider:"Andrew Ng · DeepLearning.AI", url:"https://www.coursera.org/learn/generative-ai-for-everyone", phase:1, status:"not-started", progress:0, hours:10, start:"2026-03-10", target:"2026-04-10", cost:"Free to audit", format:"Online Course", description:"Deep dive into LLMs, prompt engineering, and real-world GenAI applications. A natural step up from AI for Everyone.", tags:["GenAI","LLMs"] },
+  { id:4, name:"Generative AI & LLMs for Dummies", provider:"Book — Wiley", url:"https://www.amazon.co.uk/Generative-AI-LLMs-Dummies-Computer/dp/1394245114", phase:1, status:"not-started", progress:0, hours:15, start:"2026-03-01", target:"2026-04-15", cost:"Paid", format:"Book", description:"Accessible deep-dive into how generative AI and large language models actually work, with real-world context. Best read alongside or after Generative AI for Everyone.", tags:["GenAI","Reading"] },
+  { id:5, name:"AI Python for Beginners", provider:"Andrew Ng · DeepLearning.AI", url:"https://www.deeplearning.ai/courses/ai-python-for-beginners/", phase:2, status:"recommended", progress:0, hours:8, start:"2026-03-15", target:"2026-04-15", cost:"Free", format:"Short Course (4 parts)", description:"Teaches Python from scratch but frames everything around AI use cases from day one — working with LLMs, APIs, and data. Purpose-built for non-coders entering the AI world. ⚠ Do this before the Agentic AI course.", tags:["Python","AI-focused","⚠ Do First"] },
+  { id:6, name:"Python for Data Science & ML (LinkedIn Learning)", provider:"Lillian Pierson · LinkedIn Learning", url:"https://www.linkedin.com/learning/python-for-data-science-and-machine-learning-essential-training-part-1", phase:2, status:"recommended", progress:0, hours:8, start:"2026-04-15", target:"2026-05-15", cost:"LinkedIn subscription", format:"Online Course", description:"Hands-on project-based course building a web scraper and ML pipeline using Pandas, NumPy, and Streamlit. Best taken after AI Python for Beginners — it assumes some Python familiarity but rewards you with real data science skills.", tags:["Python","Data Science","Step 2"] },
+  { id:7, name:"Prompt Engineering for Developers", provider:"Andrew Ng & OpenAI · DeepLearning.AI", url:"https://www.deeplearning.ai/short-courses/chatgpt-prompt-engineering-for-developers/", phase:2, status:"recommended", progress:0, hours:2, start:"2026-03-20", target:"2026-03-27", cost:"Free", format:"Short Course", description:"Short, practical course on writing prompts that actually work. Covers system prompts, few-shot examples, and chain-of-thought. A quick win — 2 hours and immediately useful.", tags:["Prompting","Quick Win"] },
+  { id:8, name:"Vibe Coding Essentials", provider:"Scrimba via Coursera", url:"https://www.coursera.org/specializations/vibe-coding", phase:3, status:"not-started", progress:0, hours:40, start:"2026-05-01", target:"2026-07-01", cost:"Free to audit", format:"Specialisation", description:"Learn to turn ideas into working software using GitHub Copilot, Cursor AI, and Claude Code — no deep coding experience required. Covers prompt strategies, deployment, and debugging.", tags:["Vibe Coding","Building"] },
+  { id:9, name:"Agentic AI", provider:"Andrew Ng · DeepLearning.AI", url:"https://www.deeplearning.ai/courses/agentic-ai/", phase:3, status:"not-started", progress:0, hours:25, start:"2026-06-01", target:"2026-08-01", cost:"Paid", format:"Online Course", description:"Build autonomous multi-step AI systems using reflection, tool use, planning, and multi-agent collaboration. Taught in raw Python — not hidden behind a framework. ⚠ Complete AI Python for Beginners first.", tags:["Agents","Python","Technical"] },
+  { id:10, name:"AI Product Management Specialisation", provider:"Duke University via Coursera", url:"https://www.coursera.org/specializations/ai-product-management-duke", phase:3, status:"not-started", progress:0, hours:60, start:"2026-05-15", target:"2026-09-15", cost:"Free to audit / ~£49/mo cert", format:"Specialisation", description:"University-backed programme covering ML fundamentals for PMs, managing AI projects, human-centred AI design, and ethics. No coding required. Strong credential for your CV.", tags:["Product","Strategy","No-code"] },
+];
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let courses = [];
+let editingId = null;
+let expandedId = null;
+let saveTimer = null;
+
+function nextId() {
+  return courses.length ? Math.max(...courses.map(c => c.id)) + 1 : 1;
+}
+
+// ─── FIREBASE REALTIME SYNC ──────────────────────────────────────────────
+function listenForChanges() {
+  dbRef.on('value', snapshot => {
+    document.getElementById('loading-screen').classList.remove('open');
+    const data = snapshot.val();
+    if (data && Array.isArray(data) && data.length > 0) {
+      courses = data;
+    } else {
+      // First time — seed with defaults and write them
+      courses = JSON.parse(JSON.stringify(DEFAULT_COURSES));
+      writeToFirebase();
+    }
+    setSyncStatus('synced', 'Synced ✓');
+    renderCurrentTab();
+  }, err => {
+    console.error(err);
+    setSyncStatus('offline', 'Sync error');
+    document.getElementById('loading-screen').classList.remove('open');
+    // Fall back to defaults so the app still works
+    if (!courses.length) {
+      courses = JSON.parse(JSON.stringify(DEFAULT_COURSES));
+      renderCurrentTab();
+    }
+  });
+}
+
+function writeToFirebase() {
+  if (!dbRef) return;
+  setSyncStatus('syncing', 'Saving…');
+  dbRef.set(courses)
+    .then(() => setSyncStatus('synced', 'Synced ✓'))
+    .catch(e => { console.error(e); setSyncStatus('offline', 'Save failed'); });
+}
+
+function saveData() {
+  // Debounce writes by 600ms so slider drags don't spam Firebase
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(writeToFirebase, 600);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function init() {
+  // Apply saved theme immediately (before render) to avoid flash
+  const savedTheme = localStorage.getItem('ai_theme') || 'dark';
+  applyTheme(savedTheme);
+
+  const savedConfig = getSavedConfig();
+  if (savedConfig && savedConfig.apiKey && savedConfig.databaseURL) {
+    connectFirebase(savedConfig);
+  } else {
+    document.getElementById('loading-screen').classList.remove('open');
+    document.getElementById('setup-overlay').classList.add('open');
+    setSyncStatus('offline', 'Not connected');
+  }
+}
+
+init();
+
+// ─── TABS ───────────────────────────────────────────────────────────────────
+let currentTab = 'dashboard';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    const tabs = ['dashboard','timeline','calendar'];
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  renderCurrentTab();
+}
+
+function renderCurrentTab() {
+  renderStats();
+  if (currentTab === 'dashboard') renderDashboard();
+  else if (currentTab === 'timeline') renderTimeline();
+  else if (currentTab === 'calendar') renderCalendar();
+}
+
+// ─── STATS ──────────────────────────────────────────────────────────────────
+function renderStats() {
+  const total = courses.length;
+  const done = courses.filter(c => c.status === 'completed').length;
+  const active = courses.filter(c => c.status === 'in-progress').length;
+  const planned = courses.filter(c => c.status === 'not-started').length;
+  const suggested = courses.filter(c => c.status === 'recommended').length;
+  const overallPct = total ? Math.round(courses.reduce((s,c) => s + (c.progress||0), 0) / total) : 0;
+
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-pill overall-pill">Overall ${overallPct}%</div>
+    <div class="stat-pill"><span class="dot" style="background:var(--teal)"></span><span class="val">${done}</span> Done</div>
+    <div class="stat-pill"><span class="dot" style="background:var(--amber)"></span><span class="val">${active}</span> Active</div>
+    <div class="stat-pill"><span class="dot" style="background:var(--blue)"></span><span class="val">${planned}</span> Planned</div>
+    <div class="stat-pill"><span class="dot" style="background:var(--violet)"></span><span class="val">${suggested}</span> Suggested</div>
+  `;
+  document.getElementById('tc-dashboard').textContent = total;
+}
+
+// ─── DASHBOARD ──────────────────────────────────────────────────────────────
+function getPhaseLabel(p) {
+  const m = {1:'Foundations',2:'Bridge: Python & Prompting',3:'Branching Paths',4:'Advanced'};
+  return m[p] || `Phase ${p}`;
+}
+
+function statusLabel(s) {
+  const m = {'completed':'✓ Completed','in-progress':'▶ In Progress','not-started':'Planned','recommended':'★ Suggested'};
+  return m[s] || s;
+}
+
+function statusCycle(s) {
+  const order = ['not-started','in-progress','completed'];
+  if (s === 'recommended') return 'not-started';
+  const i = order.indexOf(s);
+  return order[(i+1) % order.length];
+}
+
+function getRingColor(status) {
+  // Use CSS variable values directly so both themes look right
+  const el = document.documentElement;
+  const style = getComputedStyle(document.body);
+  const map = {
+    'completed': style.getPropertyValue('--teal').trim() || '#00e5b8',
+    'in-progress': style.getPropertyValue('--amber').trim() || '#ffb020',
+    'not-started': style.getPropertyValue('--blue').trim() || '#4f9eff',
+    'recommended': style.getPropertyValue('--violet').trim() || '#b97fff'
+  };
+  return map[status] || map['not-started'];
+}
+
+function renderRing(progress, status, id) {
+  const r = 20, c = 2*Math.PI*r;
+  const offset = c - (progress/100)*c;
+  const color = getRingColor(status);
+  return `<div class="ring-wrap" onclick="event.stopPropagation();toggleExpand(${id})" data-tip="Click to edit progress">
+    <svg viewBox="0 0 50 50" width="52" height="52">
+      <circle class="ring-bg" cx="25" cy="25" r="${r}" stroke-width="4"/>
+      <circle class="ring-fill" cx="25" cy="25" r="${r}" stroke-width="4"
+        stroke="${color}" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"
+        transform="rotate(-90 25 25)"/>
+    </svg>
+    <div class="ring-label">${progress}%</div>
+  </div>`;
+}
+
+function renderCard(course) {
+  const isExpanded = expandedId === course.id;
+  const tagsHtml = (course.tags||[]).map(t => `<span class="badge badge-tag">${t}</span>`).join('');
+  const linkIcon = course.url
+    ? `<a class="card-name-link" href="${course.url}" target="_blank" onclick="event.stopPropagation()" title="Open course">↗</a>`
+    : '';
+  const expandedLink = course.url
+    ? `<a class="card-link" href="${course.url}" target="_blank" onclick="event.stopPropagation()">↗ Open Course: ${course.url.replace(/^https?:\/\//, '').replace(/\/$/, '').split('/').slice(0,3).join('/')}</a>`
+    : '';
+
+  return `<div class="course-card status-${course.status}" id="card-${course.id}" onclick="toggleExpand(${course.id})">
+    <div class="card-top">
+      ${renderRing(course.progress||0, course.status, course.id)}
+      <div class="card-info">
+        <div class="card-name">
+          <span class="card-name-text">${course.name}</span>
+          ${linkIcon}
+        </div>
+        <div class="card-provider">${course.provider||''}</div>
+        <div class="card-badges">
+          <span class="badge badge-status badge-${course.status}" onclick="event.stopPropagation();cycleStatus(${course.id})" data-tip="Click to change status">
+            ${statusLabel(course.status)}
+          </span>
+          ${course.cost ? `<span class="badge badge-cost">${course.cost}</span>` : ''}
+          ${tagsHtml}
+        </div>
+      </div>
+    </div>
+    <div class="card-body ${isExpanded ? 'open' : ''}" id="body-${course.id}">
+      <div class="card-body-inner" onclick="event.stopPropagation()">
+        ${course.description ? `<div class="card-desc">${course.description}</div>` : ''}
+        <div class="progress-control">
+          <div class="prog-label">
+            <span>Progress</span>
+            <span class="prog-val">${course.progress||0}%</span>
+          </div>
+          <input type="range" min="0" max="100" value="${course.progress||0}"
+            oninput="updateProgress(${course.id}, this.value)"
+            style="accent-color:${getRingColor(course.status)}">
+        </div>
+        <div class="card-meta">
+          ${course.hours ? `<div class="meta-item"><div class="meta-key">Est. Hours</div><div class="meta-val">${course.hours}h</div></div>` : ''}
+          ${course.format ? `<div class="meta-item"><div class="meta-key">Format</div><div class="meta-val">${course.format}</div></div>` : ''}
+          ${course.start ? `<div class="meta-item"><div class="meta-key">Start</div><div class="meta-val">${fmtDate(course.start)}</div></div>` : ''}
+          ${course.target ? `<div class="meta-item"><div class="meta-key">Target</div><div class="meta-val">${fmtDate(course.target)}</div></div>` : ''}
+        </div>
+        ${expandedLink}
+        <div class="card-actions">
+          <button class="btn btn-complete" onclick="markComplete(${course.id})">✓ Mark Complete</button>
+          <button class="btn btn-edit" onclick="openModal(${course.id})">Edit</button>
+          <button class="btn btn-delete" onclick="deleteCourse(${course.id})">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDashboard() {
+  const phases = [...new Set(courses.map(c => c.phase))].sort((a,b)=>a-b);
+  if (!phases.length) {
+    document.getElementById('dashboard-content').innerHTML = `<div class="empty"><div class="empty-icon">📚</div><p>No courses yet.<br>Click <strong>Add Course</strong> to start your journey.</p></div>`;
+    return;
+  }
+  document.getElementById('dashboard-content').innerHTML = phases.map(ph => {
+    const pCourses = courses.filter(c => c.phase === ph);
+    const pPct = Math.round(pCourses.reduce((s,c) => s+(c.progress||0),0) / pCourses.length);
+    return `<div class="phase-section">
+      <div class="phase-header">
+        <div class="phase-num phase-num-${ph}">Phase ${ph}</div>
+        <div class="phase-name">${getPhaseLabel(ph)}</div>
+        <div class="phase-rule"></div>
+        <div class="phase-prog">${pPct}% complete</div>
+      </div>
+      <div class="cards-grid">${pCourses.map(renderCard).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── INTERACTIONS ────────────────────────────────────────────────────────────
+function toggleExpand(id) {
+  expandedId = expandedId === id ? null : id;
+  renderDashboard();
+  if (expandedId) {
+    setTimeout(() => {
+      const el = document.getElementById('card-' + id);
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, 100);
+  }
+}
+
+function updateProgress(id, val) {
+  const c = courses.find(x => x.id === id);
+  if (!c) return;
+  c.progress = parseInt(val);
+  if (c.progress === 100) c.status = 'completed';
+  else if (c.progress > 0 && c.status === 'not-started') c.status = 'in-progress';
+  else if (c.progress > 0 && c.status === 'recommended') c.status = 'in-progress';
+  saveData();
+  // Update ring and label without full re-render
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    // Update ring fill
+    const r = 20, circ = 2*Math.PI*r;
+    const offset = circ - (c.progress/100)*circ;
+    const fill = card.querySelector('.ring-fill');
+    if (fill) {
+      fill.setAttribute('stroke-dashoffset', offset.toFixed(2));
+      fill.setAttribute('stroke', getRingColor(c.status));
+    }
+    const lbl = card.querySelector('.ring-label');
+    if (lbl) lbl.textContent = c.progress + '%';
+    const progVal = card.querySelector('.prog-val');
+    if (progVal) progVal.textContent = c.progress + '%';
+  }
+  renderStats();
+}
+
+function cycleStatus(id) {
+  const c = courses.find(x => x.id === id);
+  if (!c) return;
+  c.status = statusCycle(c.status);
+  if (c.status === 'completed') c.progress = 100;
+  else if (c.status === 'not-started' && c.progress === 100) c.progress = 0;
+  saveData();
+  renderDashboard();
+  renderStats();
+}
+
+function markComplete(id) {
+  const c = courses.find(x => x.id === id);
+  if (!c) return;
+  c.progress = 100; c.status = 'completed';
+  saveData();
+  expandedId = null;
+  renderDashboard();
+  renderStats();
+}
+
+function deleteCourse(id) {
+  if (!confirm('Delete this course from your plan?')) return;
+  courses = courses.filter(c => c.id !== id);
+  if (expandedId === id) expandedId = null;
+  saveData();
+  renderCurrentTab();
+}
+
+// ─── TIMELINE ────────────────────────────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '—';
+  try { return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+  catch(e) { return d; }
+}
+
+function renderTimeline() {
+  const withDates = courses.filter(c => c.start && c.target);
+  if (!withDates.length) {
+    document.getElementById('timeline-content').innerHTML = `<div class="empty"><div class="empty-icon">📅</div><p>Add start and target dates to your courses to see them here.</p></div>`;
+    return;
+  }
+  const starts = withDates.map(c => new Date(c.start+'T12:00:00'));
+  const ends = withDates.map(c => new Date(c.target+'T12:00:00'));
+  const minD = new Date(Math.min(...starts));
+  const maxD = new Date(Math.max(...ends));
+  // Expand to month boundaries
+  minD.setDate(1);
+  maxD.setMonth(maxD.getMonth()+1); maxD.setDate(0);
+  const totalMs = maxD - minD;
+  const today = new Date();
+  const todayPct = Math.max(0, Math.min(100, (today - minD) / totalMs * 100));
+
+  // Build month labels
+  const months = [];
+  let cur = new Date(minD);
+  while (cur <= maxD) {
+    months.push({label: cur.toLocaleDateString('en-GB',{month:'short',year:'numeric'}), date: new Date(cur)});
+    cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+  }
+
+  const monthsHtml = months.map(m => {
+    const pct = (m.date - minD) / totalMs * 100;
+    const isCurrent = m.date.getMonth() === today.getMonth() && m.date.getFullYear() === today.getFullYear();
+    return `<div class="tl-month ${isCurrent?'current':''}" style="position:absolute;left:${pct.toFixed(2)}%;transform:translateX(-50%)">${m.label}</div>`;
+  }).join('');
+
+  // Group by phase
+  const phases = [...new Set(courses.map(c => c.phase))].sort((a,b)=>a-b);
+
+  let html = `<div style="display:flex;gap:0;align-items:flex-start">
+    <div style="width:260px;flex-shrink:0"></div>
+    <div style="flex:1;height:28px;position:relative;margin-bottom:4px;">${monthsHtml}</div>
+  </div>`;
+
+  phases.forEach(ph => {
+    const pCourses = courses.filter(c => c.phase === ph);
+    html += `<div style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-left:0;">
+        <div style="width:260px;flex-shrink:0;padding:0 12px;">
+          <div style="font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted)">Phase ${ph} — ${getPhaseLabel(ph)}</div>
+        </div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>`;
+
+    pCourses.forEach(c => {
+      if (!c.start || !c.target) {
+        html += `<div class="tl-row">
+          <div class="tl-name-col"><div class="tl-course-name">${c.name}</div><div class="tl-course-phase" style="color:var(--text-muted);font-style:italic">No dates set</div></div>
+          <div style="flex:1;font-size:10px;color:var(--text-muted);padding:0 12px;">Add start/target dates to display here</div>
+        </div>`;
+        return;
+      }
+      const s = new Date(c.start+'T12:00:00');
+      const e = new Date(c.target+'T12:00:00');
+      const leftPct = Math.max(0, (s - minD) / totalMs * 100);
+      const widthPct = Math.max(0.5, (e - s) / totalMs * 100);
+      const fillW = Math.min(100, c.progress||0);
+
+      html += `<div class="tl-row">
+        <div class="tl-name-col">
+          <div class="tl-course-name">${c.name}</div>
+          <div class="tl-course-phase">${fmtDate(c.start)} → ${fmtDate(c.target)}</div>
+        </div>
+        <div class="tl-bars">
+          ${months.map(m => { const p = (m.date-minD)/totalMs*100; return `<div class="tl-grid-line" style="left:${p.toFixed(2)}%"></div>`; }).join('')}
+          <div class="tl-today-line" style="left:${todayPct.toFixed(2)}%"></div>
+          <div class="tl-bar status-${c.status}" style="left:${leftPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%">
+            <div class="tl-bar-fill" style="width:${fillW}%"></div>
+            <div class="tl-bar-label">${c.name}</div>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  document.getElementById('timeline-content').innerHTML = html;
+}
+
+// ─── CALENDAR ────────────────────────────────────────────────────────────────
+function renderCalendar() {
+  const today = new Date();
+  const months = [];
+  for (let i = -1; i < 6; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    months.push(d);
+  }
+
+  // Map target dates → courses
+  const eventMap = {};
+  courses.forEach(c => {
+    if (!c.target) return;
+    const key = c.target;
+    if (!eventMap[key]) eventMap[key] = [];
+    eventMap[key].push(c);
+  });
+
+  const dayNames = ['S','M','T','W','T','F','S'];
+
+  const calHtml = months.map(month => {
+    const year = month.getFullYear(), mo = month.getMonth();
+    const monthName = month.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    const firstDay = new Date(year, mo, 1).getDay();
+    const daysInMonth = new Date(year, mo+1, 0).getDate();
+
+    let daysHtml = '';
+    for (let i=0; i<firstDay; i++) daysHtml += `<div class="cal-day empty"></div>`;
+    for (let d=1; d<=daysInMonth; d++) {
+      const dateStr = `${year}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isToday = today.getDate()===d && today.getMonth()===mo && today.getFullYear()===year;
+      const events = eventMap[dateStr] || [];
+      const dots = events.map(e => {
+        const col = {completed:'var(--teal)','in-progress':'var(--amber)','not-started':'var(--blue)',recommended:'var(--violet)'}[e.status]||'#fff';
+        return `<div class="cal-dot" style="background:${col}" title="${e.name}"></div>`;
+      }).join('');
+      daysHtml += `<div class="cal-day ${isToday?'today':''} ${events.length?'has-event':''}" ${events.length?`title="${events.map(e=>e.name).join(', ')}"`:''}>${d}${dots}</div>`;
+    }
+
+    return `<div class="cal-month">
+      <div class="cal-month-head">${month.toLocaleDateString('en-GB',{month:'long'})} <span>${year}</span></div>
+      <div class="cal-days-head">${dayNames.map(d=>`<div class="cal-day-name">${d}</div>`).join('')}</div>
+      <div class="cal-days">${daysHtml}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('calendar-content').innerHTML = calHtml;
+
+  // Events list below calendar
+  const allEvents = courses.filter(c => c.target).sort((a,b) => new Date(a.target) - new Date(b.target));
+  const col = {completed:'var(--teal)','in-progress':'var(--amber)','not-started':'var(--blue)',recommended:'var(--violet)'};
+  const evHtml = allEvents.map(c => `<div class="cal-event-item">
+    <div class="cal-event-dot" style="background:${col[c.status]||'#888'}"></div>
+    <div class="cal-event-name">${c.name}</div>
+    <div class="cal-event-date">${fmtDate(c.target)}</div>
+  </div>`).join('');
+
+  document.getElementById('cal-events-list').innerHTML = allEvents.length
+    ? `<div class="cal-legend-title">All Target Dates</div>${evHtml}`
+    : `<div class="empty"><p>No target dates set yet. Edit your courses to add target completion dates.</p></div>`;
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openModal(id) {
+  editingId = id || null;
+  document.getElementById('modal-title').textContent = id ? 'Edit Course' : 'Add Course';
+  document.getElementById('form-submit-btn').textContent = id ? 'Save Changes' : 'Add Course';
+
+  const c = id ? courses.find(x => x.id === id) : null;
+  document.getElementById('f-id').value = c ? c.id : '';
+  document.getElementById('f-name').value = c ? c.name : '';
+  document.getElementById('f-provider').value = c ? (c.provider||'') : '';
+  document.getElementById('f-url').value = c ? (c.url||'') : '';
+  document.getElementById('f-description').value = c ? (c.description||'') : '';
+  document.getElementById('f-phase').value = c ? c.phase : 1;
+  document.getElementById('f-status').value = c ? c.status : 'not-started';
+  document.getElementById('f-progress').value = c ? (c.progress||0) : 0;
+  document.getElementById('f-hours').value = c ? (c.hours||'') : '';
+  document.getElementById('f-start').value = c ? (c.start||'') : '';
+  document.getElementById('f-target').value = c ? (c.target||'') : '';
+  document.getElementById('f-cost').value = c ? (c.cost||'') : '';
+  document.getElementById('f-format').value = c ? (c.format||'') : '';
+  document.getElementById('f-tags').value = c ? (c.tags||[]).join(', ') : '';
+
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('f-name').focus();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function handleFormSubmit(e) {
+  e.preventDefault();
+  const tagsRaw = document.getElementById('f-tags').value;
+  const tags = tagsRaw.split(',').map(t=>t.trim()).filter(Boolean);
+
+  const data = {
+    name: document.getElementById('f-name').value.trim(),
+    provider: document.getElementById('f-provider').value.trim(),
+    url: document.getElementById('f-url').value.trim(),
+    description: document.getElementById('f-description').value.trim(),
+    phase: parseInt(document.getElementById('f-phase').value),
+    status: document.getElementById('f-status').value,
+    progress: parseInt(document.getElementById('f-progress').value)||0,
+    hours: parseFloat(document.getElementById('f-hours').value)||0,
+    start: document.getElementById('f-start').value,
+    target: document.getElementById('f-target').value,
+    cost: document.getElementById('f-cost').value.trim(),
+    format: document.getElementById('f-format').value.trim(),
+    tags,
+  };
+
+  if (editingId) {
+    const idx = courses.findIndex(c => c.id === editingId);
+    if (idx >= 0) courses[idx] = { ...courses[idx], ...data };
+  } else {
+    courses.push({ id: nextId(), ...data });
+  }
+
+  saveData();
+  closeModal();
+  renderCurrentTab();
+}
+
+// ─── KEYBOARD ────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ─── THEME ───────────────────────────────────────────────────────────────────
+function applyTheme(mode) {
+  const isLight = mode === 'light';
+  document.body.classList.toggle('light', isLight);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = isLight ? '🌙' : '☀️';
+  localStorage.setItem('ai_theme', mode);
+}
+
+function toggleTheme() {
+  const current = document.body.classList.contains('light') ? 'light' : 'dark';
+  applyTheme(current === 'light' ? 'dark' : 'light');
+  // Re-render so ring colors update via getComputedStyle
+  renderCurrentTab();
+}
+</script>
+<!-- LOADING SCREEN -->
+<div id="loading-screen" class="open">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Connecting to sync…</div>
+</div>
+
+<!-- SETUP OVERLAY -->
+<div id="setup-overlay">
+  <div class="setup-box">
+    <div class="setup-icon">🔗</div>
+    <div class="setup-title">Connect to Firebase</div>
+    <div class="setup-subtitle">Paste your Firebase config below to enable cross-device sync. You only need to do this once — the config is saved in this file permanently once you paste it in.</div>
+    <div class="setup-step">
+      <div class="setup-num">1</div>
+      <div class="setup-step-text">Go to <strong>console.firebase.google.com</strong>, open your project → Project Settings → scroll to <strong>"Your apps"</strong> → Web app → <strong>SDK setup and configuration</strong></div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-num">2</div>
+      <div class="setup-step-text">Copy everything inside the <strong>firebaseConfig = { … }</strong> curly braces (just the object contents, not the variable declaration)</div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-num">3</div>
+      <div class="setup-step-text">Paste it into the box below and click <strong>Connect</strong></div>
+    </div>
+    <div class="setup-fields">
+      <label>Firebase Config Object</label>
+      <textarea class="setup-paste-area" id="setup-paste" placeholder='apiKey: "AIzaSy...",
+authDomain: "your-project.firebaseapp.com",
+databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+projectId: "your-project",
+storageBucket: "your-project.appspot.com",
+messagingSenderId: "123456789",
+appId: "1:123456789:web:abc123"'></textarea>
+      <div class="setup-err" id="setup-err"></div>
+    </div>
+    <div class="setup-actions">
+      <button class="btn-primary" onclick="connectFirebase()">Connect & Sync</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
