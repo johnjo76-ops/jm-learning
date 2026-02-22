@@ -6,8 +6,6 @@
 <title>AI Learning Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 :root {
   /* ── Dark mode (default) ── */
@@ -630,75 +628,6 @@ textarea { resize: vertical; min-height: 70px; }
 .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
 .empty p { font-size: 13px; line-height: 1.7; }
 
-/* ─── SYNC STATUS ─── */
-.sync-pill {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px;
-  border-radius: 20px; font-size: 11px;
-  font-family: var(--font-m); white-space: nowrap;
-  transition: all 0.3s;
-}
-.sync-pill.synced { background: var(--teal-dim); border: 1px solid rgba(0,212,170,0.25); color: var(--teal); }
-.sync-pill.syncing { background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.25); color: var(--amber); }
-.sync-pill.offline { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
-.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.sync-dot.pulse { animation: pulse 1.2s ease-in-out infinite; }
-
-/* ─── SETUP OVERLAY ─── */
-#setup-overlay {
-  display: none; position: fixed; inset: 0; z-index: 2000;
-  background: rgba(4,9,18,0.97); backdrop-filter: blur(12px);
-  align-items: center; justify-content: center; padding: 24px;
-}
-#setup-overlay.open { display: flex; }
-.setup-box {
-  background: var(--surface); border: 1px solid var(--border-bright);
-  border-radius: 16px; max-width: 580px; width: 100%; padding: 36px;
-  box-shadow: 0 40px 100px rgba(0,0,0,0.7);
-}
-.setup-icon { font-size: 36px; margin-bottom: 16px; }
-.setup-title { font-family: var(--font-d); font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 8px; }
-.setup-subtitle { color: var(--text-muted); font-size: 13px; line-height: 1.7; margin-bottom: 28px; }
-.setup-step {
-  display: flex; gap: 14px; margin-bottom: 18px; align-items: flex-start;
-}
-.setup-num {
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-  background: var(--teal-dim); border: 1px solid rgba(0,212,170,0.3);
-  color: var(--teal); font-family: var(--font-d); font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-}
-.setup-step-text { font-size: 12px; color: var(--text-dim); line-height: 1.6; padding-top: 3px; }
-.setup-step-text strong { color: var(--text); }
-.setup-fields { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
-.setup-fields label { color: var(--text-muted); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
-.setup-paste-area {
-  width: 100%; margin-top: 8px; min-height: 120px;
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text); font-family: var(--font-m);
-  font-size: 11px; padding: 12px; resize: vertical; outline: none;
-  transition: border-color 0.15s;
-}
-.setup-paste-area:focus { border-color: rgba(0,212,170,0.4); }
-.setup-err { color: var(--red); font-size: 11px; margin-top: 6px; min-height: 16px; }
-.setup-actions { display: flex; gap: 10px; margin-top: 16px; }
-
-/* ─── LOADING SCREEN ─── */
-#loading-screen {
-  display: none; position: fixed; inset: 0; z-index: 1500;
-  background: var(--bg); align-items: center; justify-content: center;
-  flex-direction: column; gap: 16px;
-}
-#loading-screen.open { display: flex; }
-.loading-spinner {
-  width: 36px; height: 36px; border-radius: 50%;
-  border: 3px solid rgba(0,212,170,0.15);
-  border-top-color: var(--teal);
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { color: var(--text-muted); font-size: 12px; letter-spacing: 0.08em; }
-
 /* ─── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
@@ -730,7 +659,6 @@ body.light input[type="date"] { color-scheme: light; }
 body.light .modal-overlay { background: rgba(200,215,240,0.7); }
 body.light .modal { box-shadow: 0 32px 80px rgba(0,50,150,0.12); }
 body.light select option { background: #ffffff; color: #1e3a5f; }
-body.light .setup-overlay { background: rgba(220,230,250,0.97); }
 </style>
 </head>
 <body>
@@ -743,10 +671,6 @@ body.light .setup-overlay { background: rgba(220,230,250,0.97); }
   </div>
   <div class="stats-bar" id="stats-bar"></div>
   <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
-  <div class="sync-pill syncing" id="sync-pill">
-    <div class="sync-dot pulse"></div>
-    <span id="sync-label">Connecting…</span>
-  </div>
 </div>
 
 <!-- TABS -->
@@ -879,88 +803,6 @@ body.light .setup-overlay { background: rgba(220,230,250,0.97); }
 </div>
 
 <script>
-// ─── FIREBASE CONFIG ──────────────────────────────────────────────────────
-// This gets filled in either from localStorage (after first setup) or by the user pasting their config.
-const CONFIG_KEY = 'ai_firebase_config';
-
-let db = null;
-let dbRef = null;
-let firebaseReady = false;
-
-function getSavedConfig() {
-  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch(e) { return null; }
-}
-
-function saveConfig(cfg) {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
-}
-
-function parseConfigPaste(raw) {
-  // Accept either a full firebaseConfig object or just the contents
-  let cleaned = raw.trim();
-  // Wrap in braces if not already
-  if (!cleaned.startsWith('{')) cleaned = '{' + cleaned + '}';
-  // Convert JS object (unquoted keys) to JSON
-  cleaned = cleaned
-    .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')  // quote keys
-    .replace(/:\s*"([^"]*)"/g, (_, v) => ': "' + v + '"')
-    .replace(/,\s*}/g, '}'); // trailing commas
-  try {
-    const cfg = JSON.parse(cleaned);
-    if (!cfg.apiKey || !cfg.databaseURL) throw new Error('Missing required fields');
-    return cfg;
-  } catch(e) {
-    // Try eval as a fallback for trickier pastes
-    try {
-      const obj = Function('"use strict"; return (' + raw + ')')();
-      if (!obj.apiKey || !obj.databaseURL) throw new Error('Missing required fields');
-      return obj;
-    } catch(e2) {
-      return null;
-    }
-  }
-}
-
-function connectFirebase(cfg) {
-  try {
-    if (firebase.apps.length) firebase.app().delete();
-    firebase.initializeApp(cfg);
-    db = firebase.database();
-    dbRef = db.ref('ai_learning/courses');
-    listenForChanges();
-    saveConfig(cfg);
-    document.getElementById('setup-overlay').classList.remove('open');
-    setSyncStatus('syncing', 'Syncing…');
-  } catch(e) {
-    console.error(e);
-    setSyncStatus('offline', 'Error');
-  }
-}
-
-function connectFirebaseFromPaste() {
-  const raw = document.getElementById('setup-paste').value;
-  const cfg = parseConfigPaste(raw);
-  document.getElementById('setup-err').textContent = '';
-  if (!cfg) {
-    document.getElementById('setup-err').textContent = '⚠ Could not parse config — make sure you pasted the full firebaseConfig object contents.';
-    return;
-  }
-  connectFirebase(cfg);
-}
-
-// Expose to onclick in HTML
-window.connectFirebase = connectFirebaseFromPaste;
-
-// ─── SYNC STATUS ─────────────────────────────────────────────────────────
-function setSyncStatus(state, label) {
-  const pill = document.getElementById('sync-pill');
-  const lbl = document.getElementById('sync-label');
-  const dot = pill.querySelector('.sync-dot');
-  pill.className = 'sync-pill ' + state;
-  dot.className = 'sync-dot' + (state === 'syncing' ? ' pulse' : '');
-  lbl.textContent = label;
-}
-
 // ─── DATA ──────────────────────────────────────────────────────────────────
 const DEFAULT_COURSES = [
   { id:1, name:"Various AI Introductions", provider:"Multiple platforms", url:"", phase:1, status:"completed", progress:100, hours:10, start:"2026-01-01", target:"2026-02-10", cost:"Free", format:"Mixed", description:"General orientation — what AI is, key terms, and basic concepts. Completed various bite-sized introductory content.", tags:["Introductory"] },
@@ -976,69 +818,34 @@ const DEFAULT_COURSES = [
 ];
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'ai_learning_v4';
 let courses = [];
 let editingId = null;
 let expandedId = null;
-let saveTimer = null;
 
 function nextId() {
   return courses.length ? Math.max(...courses.map(c => c.id)) + 1 : 1;
 }
 
-// ─── FIREBASE REALTIME SYNC ──────────────────────────────────────────────
-function listenForChanges() {
-  dbRef.on('value', snapshot => {
-    document.getElementById('loading-screen').classList.remove('open');
-    const data = snapshot.val();
-    if (data && Array.isArray(data) && data.length > 0) {
-      courses = data;
-    } else {
-      // First time — seed with defaults and write them
-      courses = JSON.parse(JSON.stringify(DEFAULT_COURSES));
-      writeToFirebase();
-    }
-    setSyncStatus('synced', 'Synced ✓');
-    renderCurrentTab();
-  }, err => {
-    console.error(err);
-    setSyncStatus('offline', 'Sync error');
-    document.getElementById('loading-screen').classList.remove('open');
-    // Fall back to defaults so the app still works
-    if (!courses.length) {
-      courses = JSON.parse(JSON.stringify(DEFAULT_COURSES));
-      renderCurrentTab();
-    }
-  });
-}
-
-function writeToFirebase() {
-  if (!dbRef) return;
-  setSyncStatus('syncing', 'Saving…');
-  dbRef.set(courses)
-    .then(() => setSyncStatus('synced', 'Synced ✓'))
-    .catch(e => { console.error(e); setSyncStatus('offline', 'Save failed'); });
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    courses = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_COURSES));
+  } catch(e) {
+    courses = JSON.parse(JSON.stringify(DEFAULT_COURSES));
+  }
 }
 
 function saveData() {
-  // Debounce writes by 600ms so slider drags don't spam Firebase
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(writeToFirebase, 600);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function init() {
-  // Apply saved theme immediately (before render) to avoid flash
   const savedTheme = localStorage.getItem('ai_theme') || 'dark';
   applyTheme(savedTheme);
-
-  const savedConfig = getSavedConfig();
-  if (savedConfig && savedConfig.apiKey && savedConfig.databaseURL) {
-    connectFirebase(savedConfig);
-  } else {
-    document.getElementById('loading-screen').classList.remove('open');
-    document.getElementById('setup-overlay').classList.add('open');
-    setSyncStatus('offline', 'Not connected');
-  }
+  loadData();
+  renderCurrentTab();
 }
 
 init();
@@ -1516,46 +1323,5 @@ function toggleTheme() {
   renderCurrentTab();
 }
 </script>
-<!-- LOADING SCREEN -->
-<div id="loading-screen" class="open">
-  <div class="loading-spinner"></div>
-  <div class="loading-text">Connecting to sync…</div>
-</div>
-
-<!-- SETUP OVERLAY -->
-<div id="setup-overlay">
-  <div class="setup-box">
-    <div class="setup-icon">🔗</div>
-    <div class="setup-title">Connect to Firebase</div>
-    <div class="setup-subtitle">Paste your Firebase config below to enable cross-device sync. You only need to do this once — the config is saved in this file permanently once you paste it in.</div>
-    <div class="setup-step">
-      <div class="setup-num">1</div>
-      <div class="setup-step-text">Go to <strong>console.firebase.google.com</strong>, open your project → Project Settings → scroll to <strong>"Your apps"</strong> → Web app → <strong>SDK setup and configuration</strong></div>
-    </div>
-    <div class="setup-step">
-      <div class="setup-num">2</div>
-      <div class="setup-step-text">Copy everything inside the <strong>firebaseConfig = { … }</strong> curly braces (just the object contents, not the variable declaration)</div>
-    </div>
-    <div class="setup-step">
-      <div class="setup-num">3</div>
-      <div class="setup-step-text">Paste it into the box below and click <strong>Connect</strong></div>
-    </div>
-    <div class="setup-fields">
-      <label>Firebase Config Object</label>
-      <textarea class="setup-paste-area" id="setup-paste" placeholder='apiKey: "AIzaSy...",
-authDomain: "your-project.firebaseapp.com",
-databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-projectId: "your-project",
-storageBucket: "your-project.appspot.com",
-messagingSenderId: "123456789",
-appId: "1:123456789:web:abc123"'></textarea>
-      <div class="setup-err" id="setup-err"></div>
-    </div>
-    <div class="setup-actions">
-      <button class="btn-primary" onclick="connectFirebase()">Connect & Sync</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
