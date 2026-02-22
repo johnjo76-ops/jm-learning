@@ -6,6 +6,8 @@
 <title>AI Learning Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 :root {
   /* ── Dark mode (default) ── */
@@ -628,6 +630,96 @@ textarea { resize: vertical; min-height: 70px; }
 .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
 .empty p { font-size: 13px; line-height: 1.7; }
 
+/* ─── SYNC BANNER ─── */
+#sync-banner {
+  display: none;
+  align-items: center; gap: 12px;
+  padding: 10px 28px;
+  background: rgba(79,158,255,0.08);
+  border-bottom: 1px solid rgba(79,158,255,0.18);
+  font-size: 12px; color: var(--text-dim);
+  transition: var(--theme-transition);
+}
+body.light #sync-banner { background: rgba(37,99,235,0.06); border-bottom-color: rgba(37,99,235,0.18); }
+#sync-banner.show { display: flex; }
+.sync-banner-icon { font-size: 15px; }
+.sync-banner-text { flex: 1; }
+.sync-banner-text strong { color: var(--text); }
+.sync-banner-btn {
+  padding: 5px 14px; border-radius: 6px; cursor: pointer;
+  background: var(--blue-dim); border: 1px solid rgba(79,158,255,0.35);
+  color: var(--blue); font-family: var(--font-d); font-size: 11px; font-weight: 700;
+  transition: all 0.15s; white-space: nowrap;
+}
+.sync-banner-btn:hover { background: var(--blue); color: #fff; }
+.sync-banner-dismiss {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 18px; line-height: 1; padding: 0 4px;
+}
+.sync-banner-dismiss:hover { color: var(--text); }
+
+/* Sync status pill in header */
+.sync-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 11px; font-family: var(--font-m); white-space: nowrap;
+  border: 1px solid transparent; transition: all 0.3s;
+}
+.sync-pill.synced { background: var(--teal-dim); border-color: rgba(0,229,184,0.25); color: var(--teal); }
+.sync-pill.syncing { background: var(--amber-dim); border-color: rgba(255,176,32,0.25); color: var(--amber); }
+.sync-pill.offline { display: none; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.sync-dot.pulse { animation: blink 1.2s ease-in-out infinite; }
+
+/* ─── FIREBASE SETUP MODAL ─── */
+#firebase-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 1500;
+  background: rgba(4,9,18,0.85); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center; padding: 24px;
+}
+#firebase-modal-overlay.open { display: flex; }
+.fb-modal {
+  background: var(--surface); border: 1px solid var(--border-bright);
+  border-radius: 16px; max-width: 560px; width: 100%; padding: 32px;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+  animation: modalIn 0.2s ease;
+}
+.fb-modal-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.fb-modal-title { font-family: var(--font-d); font-size: 20px; font-weight: 800; color: var(--text-heading); }
+.fb-modal-close {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--card); cursor: pointer; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.fb-modal-close:hover { background: var(--red-dim); color: var(--red); }
+.fb-modal-sub { color: var(--text-muted); font-size: 12px; line-height: 1.6; margin-bottom: 22px; }
+.fb-step {
+  display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;
+}
+.fb-step-num {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: var(--blue-dim); border: 1px solid rgba(79,158,255,0.3);
+  color: var(--blue); font-family: var(--font-d); font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.fb-step-text { font-size: 12px; color: var(--text-dim); line-height: 1.6; padding-top: 2px; }
+.fb-step-text strong { color: var(--text); }
+.fb-step-text a { color: var(--blue); }
+.fb-field { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+.fb-field label { color: var(--text-muted); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+.fb-textarea {
+  width: 100%; min-height: 110px; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--font-m);
+  font-size: 11px; resize: vertical; outline: none;
+  transition: border-color 0.15s;
+}
+.fb-textarea:focus { border-color: rgba(79,158,255,0.4); box-shadow: 0 0 0 3px rgba(79,158,255,0.08); }
+.fb-err { color: var(--red); font-size: 11px; margin-top: 6px; min-height: 16px; }
+.fb-actions { display: flex; gap: 10px; margin-top: 16px; }
+
 /* ─── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
@@ -670,7 +762,19 @@ body.light select option { background: #ffffff; color: #1e3a5f; }
     AI Learning Dashboard
   </div>
   <div class="stats-bar" id="stats-bar"></div>
+  <div class="sync-pill offline" id="sync-pill">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-label">Synced</span>
+  </div>
   <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
+</div>
+
+<!-- SYNC BANNER -->
+<div id="sync-banner">
+  <span class="sync-banner-icon">☁️</span>
+  <span class="sync-banner-text"><strong>Cross-device sync not set up.</strong> Your progress saves on this device only. Connect Firebase to sync across all your devices.</span>
+  <button class="sync-banner-btn" onclick="openFirebaseModal()">Connect Firebase</button>
+  <button class="sync-banner-dismiss" onclick="dismissBanner()" title="Dismiss">×</button>
 </div>
 
 <!-- TABS -->
@@ -819,39 +923,174 @@ const DEFAULT_COURSES = [
 
 // ─── STATE ──────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'ai_learning_v4';
+const FB_CONFIG_KEY = 'ai_firebase_config';
 let courses = [];
 let editingId = null;
 let expandedId = null;
+let dbRef = null;
+let saveDebounce = null;
 
 function nextId() {
   return courses.length ? Math.max(...courses.map(c => c.id)) + 1 : 1;
 }
 
-function loadData() {
+// ─── LOCAL STORAGE ───────────────────────────────────────────────────────────
+function loadLocal() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    courses = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_COURSES));
+    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_COURSES));
   } catch(e) {
-    courses = JSON.parse(JSON.stringify(DEFAULT_COURSES));
+    return JSON.parse(JSON.stringify(DEFAULT_COURSES));
   }
 }
 
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
+function saveLocal(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
+
+// ─── SAVE (local always, firebase if connected) ───────────────────────────────
+function saveData() {
+  saveLocal(courses);
+  if (dbRef) {
+    clearTimeout(saveDebounce);
+    saveDebounce = setTimeout(() => {
+      setSyncStatus('syncing');
+      dbRef.set(courses)
+        .then(() => setSyncStatus('synced'))
+        .catch(() => setSyncStatus('error'));
+    }, 700);
+  }
+}
+
+// ─── SYNC STATUS PILL ────────────────────────────────────────────────────────
+function setSyncStatus(state) {
+  const pill = document.getElementById('sync-pill');
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if (!pill) return;
+  pill.className = 'sync-pill ' + (state === 'synced' || state === 'syncing' ? state : 'offline');
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' pulse' : '');
+  lbl.textContent = state === 'synced' ? 'Synced ✓' : state === 'syncing' ? 'Saving…' : 'Sync error';
+}
+
+// ─── FIREBASE ────────────────────────────────────────────────────────────────
+function getSavedFbConfig() {
+  try { return JSON.parse(localStorage.getItem(FB_CONFIG_KEY)); } catch(e) { return null; }
+}
+
+function parseFbConfig(raw) {
+  // Wrap in braces if bare key:value list
+  let s = raw.trim();
+  if (!s.startsWith('{')) s = '{' + s + '}';
+  // Quote unquoted keys
+  s = s.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+  // Remove trailing commas before }
+  s = s.replace(/,(\s*})/g, '$1');
+  try {
+    const cfg = JSON.parse(s);
+    if (!cfg.apiKey || !cfg.databaseURL) throw new Error('missing fields');
+    return cfg;
+  } catch(e) {
+    // fallback: eval (handles JS object literals)
+    try {
+      const cfg = Function('"use strict";return(' + raw + ')')();
+      if (!cfg.apiKey || !cfg.databaseURL) throw new Error('missing fields');
+      return cfg;
+    } catch(e2) { return null; }
+  }
+}
+
+function connectFirebase(cfg) {
+  try {
+    if (firebase.apps.length) firebase.apps.forEach(app => app.delete());
+    firebase.initializeApp(cfg);
+    const db = firebase.database();
+    dbRef = db.ref('ai_learning/courses');
+    // Listen for remote changes
+    dbRef.on('value', snapshot => {
+      const remote = snapshot.val();
+      if (remote && Array.isArray(remote) && remote.length > 0) {
+        courses = remote;
+        saveLocal(courses);
+        renderCurrentTab();
+      } else if (!remote) {
+        // First time connecting — push local data up
+        dbRef.set(courses);
+      }
+      setSyncStatus('synced');
+    }, err => {
+      console.warn('Firebase error:', err);
+      setSyncStatus('error');
+    });
+    localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
+    hideBanner();
+  } catch(e) {
+    console.error('Firebase init failed:', e);
+    dbRef = null;
+  }
+}
+
+// ─── FIREBASE MODAL ──────────────────────────────────────────────────────────
+function openFirebaseModal() {
+  document.getElementById('firebase-modal-overlay').classList.add('open');
+  document.getElementById('fb-err').textContent = '';
+}
+function closeFirebaseModal() {
+  document.getElementById('firebase-modal-overlay').classList.remove('open');
+}
+function handleFbOverlayClick(e) {
+  if (e.target === document.getElementById('firebase-modal-overlay')) closeFirebaseModal();
+}
+function submitFirebaseConfig() {
+  const raw = document.getElementById('fb-paste-area').value.trim();
+  document.getElementById('fb-err').textContent = '';
+  if (!raw) { document.getElementById('fb-err').textContent = '⚠ Please paste your Firebase config first.'; return; }
+  const cfg = parseFbConfig(raw);
+  if (!cfg) {
+    document.getElementById('fb-err').textContent = '⚠ Could not parse config — make sure you pasted the full contents of the firebaseConfig { } object.';
+    return;
+  }
+  connectFirebase(cfg);
+  closeFirebaseModal();
+}
+
+// ─── SYNC BANNER ─────────────────────────────────────────────────────────────
+function showBanner() {
+  if (localStorage.getItem('ai_banner_dismissed')) return;
+  document.getElementById('sync-banner').classList.add('show');
+}
+function hideBanner() {
+  document.getElementById('sync-banner').classList.remove('show');
+}
+function dismissBanner() {
+  hideBanner();
+  localStorage.setItem('ai_banner_dismissed', '1');
+}
+
+// ─── TABS ───────────────────────────────────────────────────────────────────
+let currentTab = 'dashboard';
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function init() {
+  // 1. Apply theme immediately — no flash
   const savedTheme = localStorage.getItem('ai_theme') || 'dark';
   applyTheme(savedTheme);
-  loadData();
+
+  // 2. Load local data and render immediately — page always works
+  courses = loadLocal();
   renderCurrentTab();
+
+  // 3. Try to connect Firebase in the background if config exists
+  const cfg = getSavedFbConfig();
+  if (cfg && cfg.apiKey && cfg.databaseURL) {
+    connectFirebase(cfg);
+  } else {
+    showBanner();
+  }
 }
 
 init();
 
-// ─── TABS ───────────────────────────────────────────────────────────────────
-let currentTab = 'dashboard';
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach((btn, i) => {
@@ -1322,6 +1561,43 @@ function toggleTheme() {
   // Re-render so ring colors update via getComputedStyle
   renderCurrentTab();
 }
-</script>
+</script><!-- FIREBASE SETUP MODAL -->
+<div id="firebase-modal-overlay" onclick="handleFbOverlayClick(event)">
+  <div class="fb-modal">
+    <div class="fb-modal-head">
+      <div class="fb-modal-title">🔗 Connect Firebase Sync</div>
+      <button class="fb-modal-close" onclick="closeFirebaseModal()">×</button>
+    </div>
+    <div class="fb-modal-sub">Paste your Firebase config below. You only need to do this once per device — it's saved in your browser and used automatically from then on.</div>
+    <div class="fb-step">
+      <div class="fb-step-num">1</div>
+      <div class="fb-step-text">Go to <strong><a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a></strong> → your project → <strong>Project Settings</strong> (gear icon) → scroll to <strong>"Your apps"</strong> → your web app → <strong>SDK setup and configuration</strong></div>
+    </div>
+    <div class="fb-step">
+      <div class="fb-step-num">2</div>
+      <div class="fb-step-text">Copy everything <strong>inside</strong> the curly braces of the <strong>firebaseConfig = { … }</strong> object (not the whole line, just the contents)</div>
+    </div>
+    <div class="fb-step">
+      <div class="fb-step-num">3</div>
+      <div class="fb-step-text">Paste it below and click <strong>Connect & Sync</strong></div>
+    </div>
+    <div class="fb-field">
+      <label>Firebase Config Contents</label>
+      <textarea class="fb-textarea" id="fb-paste-area" placeholder='apiKey: "AIzaSyXXXXXXXXX",
+authDomain: "your-project.firebaseapp.com",
+databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+projectId: "your-project",
+storageBucket: "your-project.appspot.com",
+messagingSenderId: "12345678",
+appId: "1:12345678:web:abc123"'></textarea>
+      <div class="fb-err" id="fb-err"></div>
+    </div>
+    <div class="fb-actions">
+      <button class="btn-primary" onclick="submitFirebaseConfig()">Connect & Sync</button>
+      <button class="btn-cancel" onclick="closeFirebaseModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
